@@ -1,2 +1,2 @@
 # Rule-Parser
-Created for deploy the Rule Parser into the stream-lit cloud.
+Created for deploy the ErrorLog Parser into the stream-lit cloud.

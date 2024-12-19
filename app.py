@@ -66,7 +66,6 @@ def parse_log_file(file):
     return data, other_warnings
 
 st.title("ErrorLog Parser")
-st.title("  ")
 st.write("This tool simplifies troubleshooting, enhances debugging efficiency, and allows users to quickly generate downloadable Excel reports, making it easier to track, manage, and resolve integration process-related problems.")
 
 uploaded_file = st.file_uploader("Choose a log file", type="txt")

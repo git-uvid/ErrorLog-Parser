@@ -36,7 +36,6 @@ st.markdown("""
             margin-bottom: 0px;
             font-size: 14px;
             font-weight:bold;
-            color:#6eb52f;
         }
     </style>
 """, unsafe_allow_html=True)

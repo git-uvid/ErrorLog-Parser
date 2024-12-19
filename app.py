@@ -12,7 +12,7 @@ def parse_log_file(file):
     date_pattern = r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}'
     warn_pattern = r'(?:WARN :)'
     pattern_1 = r"Coordinate (\S+) not found in dimension (\S+) \(load (\S+)\)"
-    pattern_2 = r"Could not write cube cell: Element (\S+) in dimension (\S+) is consolidated and Splashing is disabled. \(load (\S+)\)"
+    pattern_2 = r"Could not write cube cell: Element ([\S\s]+) in dimension ([\S\s]+) is consolidated and Splashing is disabled. \(load ([\S\s]+)\)"
     
     data = []
     other_warnings = []
@@ -29,7 +29,8 @@ def parse_log_file(file):
             coordinate = match_1.group(1)
             dimension = match_1.group(2)
             load = match_1.group(3)
-            data.append([coordinate, dimension, load])
+            message = "element not found in dimension"
+            data.append([coordinate, dimension, load, message])
         
         # Check if the line matches pattern_2
         else:
@@ -38,7 +39,8 @@ def parse_log_file(file):
                 element = match_2.group(1)
                 dimension = match_2.group(2)
                 load = match_2.group(3)
-                data.append([element, dimension, load])
+                message = "Splashing disabled in consolidation"
+                data.append([element, dimension, load, message])
             else:
                 line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
                 other_warnings.append([line_without_date_warn])
@@ -53,7 +55,7 @@ uploaded_file = st.file_uploader("Choose a log file", type="txt")
 if uploaded_file is not None:
     extracted_data, other_warnings = parse_log_file(uploaded_file)
     if extracted_data:
-        df_data = pd.DataFrame(extracted_data, columns=["coordinate", "dimension", "load"])
+        df_data = pd.DataFrame(extracted_data, columns=["coordinate", "dimension", "load", "remarks"])
         df_other_warnings = pd.DataFrame(other_warnings, columns=["other warning"])
 
         excel_file = io.BytesIO()

@@ -31,6 +31,12 @@ st.markdown("""
             font-size: 17px;
             font-weight: 600;
         }
+        .st-emotion-cache-le7ohw p{
+            word-break: break-word;
+            margin-bottom: 0px;
+            font-size: 14px;
+            font-weight:bold;
+        }
     </style>
 """, unsafe_allow_html=True)
 

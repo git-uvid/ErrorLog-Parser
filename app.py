@@ -31,20 +31,15 @@ st.markdown("""
             font-size: 17px;
             font-weight: 600;
         }
-        .st-emotion-cache-le7ohw p{
-            word-break: break-word;
-            margin-bottom: 0px;
-            font-size: 14px;
-            font-weight:bold;
-        }
     </style>
 """, unsafe_allow_html=True)
 
 def parse_log_file(file):
     date_pattern = r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}'
     warn_pattern = r'(?:WARN :)'
-    pattern_1 = r"Coordinate (\S+) not found in dimension (\S+) \(load (\S+)\)"
-    pattern_2 = r"Could not write cube cell: Element ([\S\s]+) in dimension ([\S\s]+) is consolidated and Splashing is disabled. \(load ([\S\s]+)\)" 
+    pattern_1 = r"Coordinate ([\S\s]+) not found in dimension ([\S\s]+) \(load ([\S\s]+)\)"
+    pattern_2 = r"Could not write cube cell: Element ([\S\s]+) in dimension ([\S\s]+) is consolidated and Splashing is disabled. \(load ([\S\s]+)\)"
+    pattern_3 = r"Failed to transform NULL value of column null in function ([\S\s]+) at line : Element ([\S\s]+) does not exist in dimension ([\S\s]+) \(function ([\S\s]+) in transform ([\S\s]+)\)"
     data = []
     other_warnings = []
     file_content = file.read().decode("utf-8")
@@ -67,18 +62,28 @@ def parse_log_file(file):
                 message = "Splashing disabled in consolidation"
                 data.append([element, dimension, load, message])
             else:
-                line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
-                other_warnings.append([line_without_date_warn])
+                match_3 = re.search(pattern_3, processedWarn_date)
+                if match_3:
+                    function = match_3.group(1)
+                    element = match_3.group(2)
+                    dimension = match_3.group(3)
+                    transform = match_3.group(5)
+                    function_transform = "[function] "+function+" in [transform] "+transform
+                    message = "NULL value transformation failed"
+                    data.append([element, dimension, function_transform, message])
+                else:
+                    line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
+                    other_warnings.append([line_without_date_warn])
     return data, other_warnings
 
 st.title("ErrorLog Parser")
-st.write("This tool simplifies troubleshooting, debugging the log in integration monitor and allows users to quickly generate downloadable Excel reports, making it easier to track, manage, and resolve integration process-related warning/error logs. Upload your Log file below.")
+st.write("This tool simplifies troubleshooting, enhances debugging efficiency, and allows users to quickly generate downloadable Excel reports, making it easier to track, manage, and resolve integration process-related problems.")
 
 uploaded_file = st.file_uploader("Choose a log file", type="txt")
 if uploaded_file is not None:
     extracted_data, other_warnings = parse_log_file(uploaded_file)
     if extracted_data:
-        df_data = pd.DataFrame(extracted_data, columns=["coordinate", "dimension", "load", "remarks"])
+        df_data = pd.DataFrame(extracted_data, columns=["Element", "dimension", "load", "remarks"])
         df_other_warnings = pd.DataFrame(other_warnings, columns=["other warning"])
         excel_file = io.BytesIO()
         with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:

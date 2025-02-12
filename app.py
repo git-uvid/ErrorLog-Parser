@@ -40,6 +40,9 @@ def parse_log_file(file):
     pattern_1 = r"Coordinate ([\S\s]+) not found in dimension ([\S\s]+) \(load ([\S\s]+)\)"
     pattern_2 = r"Could not write cube cell: Element ([\S\s]+) in dimension ([\S\s]+) is consolidated and Splashing is disabled. \(load ([\S\s]+)\)"
     pattern_3 = r"Failed to transform NULL value of column null in function ([\S\s]+) at line : Element ([\S\s]+) does not exist in dimension ([\S\s]+) \(function ([\S\s]+) in transform ([\S\s]+)\)"
+    pattern_4 = r"Element with name ([\S\s]+) exists multiple times in normalized form \(transform ([\S\s]+)\)"
+    pattern_5 = r"Column ([\S\s]+) does not exist in source. Dimension mapping is ignored. \(load ([\S\s]+)\)"
+    pattern_6 = r"Failed to transform value ([\S\s]+) of column ([\S\s]+) in function ([\S\s]+): Unparseable ([\S\s]+) \(function ([\S\s]+) in transform ([\S\s]+)\)"
     data = []
     other_warnings = []
     file_content = file.read().decode("utf-8")
@@ -72,8 +75,33 @@ def parse_log_file(file):
                     message = "NULL value transformation failed"
                     data.append([element, dimension, function_transform, message])
                 else:
-                    line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
-                    other_warnings.append([line_without_date_warn])
+                    match_4 = re.search(pattern_4, processedWarn_date)
+                    if match_4:
+                        element = match_4.group(1).replace('"', "")
+                        transform = match_4.group(2)
+                        message = "Element exists multiple times in normalized form"
+                        data.append([element, "N/A", transform, message])
+                    else:
+                        match_5 = re.search(pattern_5, processedWarn_date)
+                        if match_5:
+                            dim = match_5.group(1)
+                            load = match_5.group(2)
+                            message = "Dimension mapping is ignored"
+                            data.append(["N/A", dim , load, message])
+                        else:
+                            match_6 = re.search(pattern_6, processedWarn_date)
+                            if match_6:
+                                value = match_6.group(1).replace('"', "")
+                                column = match_6.group(2)
+                                function = match_6.group(3)
+                                unparseable = match_6.group(4)
+                                transform = match_6.group(6)
+                                function_transform = "[function] "+function+" in [transform] "+transform
+                                message = "Value transformation failed due to unparseable "+ unparseable
+                                data.append([value, "N/A", function_transform, message])
+                            else:
+                                line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
+                                other_warnings.append([line_without_date_warn])
     return data, other_warnings
 
 st.title("ErrorLog Parser")

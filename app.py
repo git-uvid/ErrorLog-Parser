@@ -43,6 +43,10 @@ def parse_log_file(file):
     pattern_4 = r"Element with name ([\S\s]+) exists multiple times in normalized form \(transform ([\S\s]+)\)"
     pattern_5 = r"Column ([\S\s]+) does not exist in source. Dimension mapping is ignored. \(load ([\S\s]+)\)"
     pattern_6 = r"Failed to transform value ([\S\s]+) of column ([\S\s]+) in function ([\S\s]+): Unparseable ([\S\s]+) \(function ([\S\s]+) in transform ([\S\s]+)\)"
+    pattern_7 = r"Removing column ([\S\s]+) of source ([\S\s]+) from joint result, because ([\S\s]+) \(transform ([\S\s]+)\)"
+    pattern_8 = r"Empty coordinate in dimension ([\S\s]+) \(load ([\S\s]+)\)"
+    pattern_9 = r"Failed to transform NULL value of column null in function ([\S\s]+) at line : Unable to execute groovy function: Cannot invoke method substring\(\) on null object \(function ([\S\s]+) in transform ([\S\s]+)\)"
+
     data = []
     other_warnings = []
     file_content = file.read().decode("utf-8")
@@ -100,8 +104,28 @@ def parse_log_file(file):
                                 message = "Value transformation failed due to unparseable "+ unparseable
                                 data.append([value, "N/A", function_transform, message])
                             else:
-                                line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
-                                other_warnings.append([line_without_date_warn])
+                                match_7 = re.search(pattern_7, processedWarn_date)
+                                if match_7:
+                                    coord = match_7.group(1)
+                                    source = match_7.group(2)
+                                    reason = match_7.group(3)
+                                    transform = match_7.group(4)
+                                    data.append([coord, "N/A", transform, reason])
+                                else:
+                                    match_8 = re.search(pattern_8, processedWarn_date)
+                                    if match_8:
+                                        coord = match_8.group(1)
+                                        transform = match_8.group(2)
+                                        data.append([coord, "N/A", transform, "Empty coordinate"])
+                                    else:
+                                        match_9 = re.search(pattern_9, processedWarn_date)
+                                        if match_9:
+                                            func = match_9.group(1)
+                                            transform = match_9.group(3)
+                                            data.append([func,"N/A",transform,"Unable to execute groovy function: Cannot invoke method substring() on null object"])
+                                        else:
+                                            line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
+                                            other_warnings.append([line_without_date_warn])
     return data, other_warnings
 
 st.title("ErrorLog Parser")
@@ -111,7 +135,7 @@ uploaded_file = st.file_uploader("Choose a log file", type="txt")
 if uploaded_file is not None:
     extracted_data, other_warnings = parse_log_file(uploaded_file)
     if extracted_data:
-        df_data = pd.DataFrame(extracted_data, columns=["Element", "dimension", "load", "remarks"])
+        df_data = pd.DataFrame(extracted_data, columns=["Element/Coordinate/function", "dimension", "component", "remarks"])
         df_other_warnings = pd.DataFrame(other_warnings, columns=["other warning"])
         excel_file = io.BytesIO()
         with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:

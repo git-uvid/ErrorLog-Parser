@@ -46,6 +46,7 @@ def parse_log_file(file):
     pattern_7 = r"Removing column ([\S\s]+) of source ([\S\s]+) from joint result, because ([\S\s]+) \(transform ([\S\s]+)\)"
     pattern_8 = r"Empty coordinate in dimension ([\S\s]+) \(load ([\S\s]+)\)"
     pattern_9 = r"Failed to transform NULL value of column null in function ([\S\s]+) at line : Unable to execute groovy function: Cannot invoke method substring\(\) on null object \(function ([\S\s]+) in transform ([\S\s]+)\)"
+    pattern_10 = r"Failed to transform value ([\S\s]+) of column ([\S\s]+) in function ([\S\s]+): Failed to convert value ([\S\s]+) in column ([\S\s]+) to ([\S\s]+) \(function ([\S\s]+) in transform ([\S\s]+)\)"
 
     data = []
     other_warnings = []
@@ -124,8 +125,17 @@ def parse_log_file(file):
                                             transform = match_9.group(3)
                                             data.append([func,"N/A",transform,"Unable to execute groovy function: Cannot invoke method substring() on null object"])
                                         else:
-                                            line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
-                                            other_warnings.append([line_without_date_warn])
+                                            match_10 = re.search(pattern_10, processedWarn_date)
+                                            if match_10:
+                                                value = match_10.group(3)
+                                                col = match_10.group(2)
+                                                value_mod = "Func name:"+value
+                                                transform = match_10.group(8)
+                                                remark = f'Failed to convert value of column: {col}'
+                                                data.append([value_mod, "N/A", transform, remark])
+                                            else:
+                                                line_without_date_warn = re.sub(r"^\S+ \S+, \S+  WARN :", "", processedWarn_date)
+                                                other_warnings.append([line_without_date_warn])
     return data, other_warnings
 
 st.title("ErrorLog Parser")
